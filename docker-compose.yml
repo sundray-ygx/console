@@ -1,0 +1,18 @@
+services:
+  console:
+    build: ./console
+    ports:
+      - "8080:80"
+    depends_on:
+      - console-api
+    restart: unless-stopped
+
+  console-api:
+    build: ./console-api
+    ports:
+      - "3300:3300"
+    environment:
+      - NOTION_TOKEN=${NOTION_TOKEN}
+    volumes:
+      - /root/.hermes/knowledge:/root/.hermes/knowledge:ro
+    restart: unless-stopped
