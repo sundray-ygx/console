@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//root/.hermes/projects/console-api/**)",
+      "Read(//root/.claude/local-market/plugins/SDD/scripts/**)",
+      "Read(//root/.claude/local-market/plugins/**)",
+      "Read(//root/.claude/**)",
+      "Bash(mkdir -p /root/.claude/local-market/plugins)",
+      "Bash(ln -s /volume1/homes/ygx/share/plugins/SDD /root/.claude/local-market/plugins/SDD)",
+      "Bash([ -f \"/root/.claude/local-market/plugins/SDD/scripts/hooks/$script\" ])",
+      "Bash(curl -fsSL https://bun.sh/install)",
+      "Bash(bash)",
+      "Bash(apk list *)",
+      "Bash(apt list *)",
+      "Bash(conda install *)",
+      "Read(//usr/bin/**)",
+      "Read(//usr/sbin/**)",
+      "Bash(curl -fsSL https://bun.sh/download/latest/darwin/aarch64)",
+      "Bash(curl -fsSL -o /tmp/bun.zip \"https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip\")",
+      "Bash(bun --version)",
+      "Bash(/usr/local/node-v22.19.0-linux-x64/bin/bun *)",
+      "Bash(mkdir -p ~/.bun/bin)",
+      "Bash(ln -sf /usr/local/node-v22.19.0-linux-x64/bin/bun ~/.bun/bin/bun)",
+      "Bash(~/.bun/bin/bun --version)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git config *)"
+    ]
+  }
+}
