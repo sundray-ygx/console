@@ -1,28 +1,35 @@
 # Session Context
-> Updated: 2026-05-19 22:57 | Task: console-impl
+> Updated: 2026-05-20 13:12 | Task: console-impl
 
 ## Current Task
-- 目标: Console 个人数字中心完整开发 — 需求检视已完成，环境问题已修复，准备执行实现计划
-- 进度: brainstorming 全流程完成 + 环境修复完成
-- 下一步: 执行实现计划 v2.0（Subagent-Driven 方式）
+- 目标: Console 个人数字中心完整开发 — 后端 API 验证通过，前后端联调成功
+- 进度: 全部 20 任务实现完成 + 属性名修复完成 + 端点验证通过
+- 下一步: 前端可视化验证 → commit
 
 ## Key State
-- 决策: 11 项变更已写入需求规格+架构设计+CLAUDE.md；执行方式选 Subagent-Driven
-- 活跃文件:
-  - `../knowledge/projects/console/02-requirements/requirements-spec.md` (v1.0, 已更新)
-  - `../knowledge/projects/console/03-design/architecture-design.md` (v3.1, 已更新)
-  - `../knowledge/projects/console/04-implementation/implementation-plan.md` (v2.0, 已更新)
-  - `CLAUDE.md` (已移除时间块任务)
+- 决策: 11 项变更已写入需求规格+架构设计+CLAUDE.md；执行方式 Subagent-Driven
+- 修复:
+  - Notion SDK v5→v4 降级 (databases.query 恢复)
+  - DB ID 短→完整 UUID 映射 (notion.mjs DB_IDS + resolveDbId)
+  - 全部属性名对齐实际 Notion 数据库 schema:
+    - title: 待办事项/任务/日/领域/目标/关键结果/项目/周/月/季度/年度/主题/书/标题
+    - 状态: 目标=select, 其余=status
+    - 关系: 所在年度/所在季度/所在月/所在周/关键结果/关联项目
+    - 排序: 开始日期 (not 日期)
+    - 计划: 周计划/月计划/季度计划/年度计划/今天安排/今日复盘&反思
+    - 评分: 效率打分(select)/年度评分(select)/完成度得分(number)
+- 端点验证结果:
+  - /api/notion/today ✅ (53 todos, 100 tasks, 1 habit, review)
+  - /api/notion/okr ✅ (10 domains, hierarchy OK)
+  - /api/notion/dashboard ✅ (stats, todoList, okr, week, knowledge)
+  - /api/notion/week ✅ (title, plan, 11 projects)
+  - /api/notion/knowledge ✅ (9 topics, 4 tabs with pagination)
+  - /api/notion/pdca/timeline ✅ (3 years hierarchy)
+  - /api/system ✅ /api/health ✅ /api/fs/tree ✅
+- 前端: Vite dev :3201, build 4.13s, TypeScript clean
 - 阻塞: 无
 
 ## Recent Context
-- brainstorming 8 轮 grilling 确认 11 项变更: FR-11 Settings 占位、移除时间块任务、刷新间隔统一 10s、习惯加入 dashboard API、NFR-05 错误加载处理、OKR 多状态筛选、知识库分页、刷新频率四级拆分
-- 修复 SDD hook: `~/.claude/local-market/plugins/SDD` → `/volume1/homes/ygx/share/plugins/SDD` 符号链接
-- 安装 Bun 1.3.14 via npm (`npm install -g bun`)，创建 `~/.bun/bin/bun` 符号链接 → claude-mem hook 正常
-- 实现计划 v2.0: Phase 1 后端 Notion API (7 tasks) → Phase 2 文件 API (2) → Phase 3 composables (3) → Phase 4 前端对接 (6) → Phase 5 错误状态 (1) → Phase 6 Docker (1)
-
-## Notion DB IDs
-- OKR: 领域(91e23617), 目标(1d70b25e), KR(76a77973), 项目(374ac64d), 任务(cbe3188c)
-- PDCA: 待办(5c0f7915), 日(2bd7772a), 周(345f5210), 月(da80ff53), 季(38195be0), 年(137deda2)
-- 知识: 主题(e4a90d63), 图书馆(0b2e9016), 资料(5680a87f), 灵感(4c4aeb0f), 宝藏(f93e7e3e)
-- 习惯: 1a9efc2b
+- notion-database-map.md 提供了完整 DB schema (字段名+类型)
+- 通过 Notion API retrieve 每个 DB 的 properties 验证了实际 schema
+- 代码中假设的属性名与实际 Notion schema 不匹配 → 全量修复
