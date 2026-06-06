@@ -36,5 +36,42 @@ export function useKnowledgeBase() {
     }
   }
 
-  return { tree, file, loading, error, fetchTree, fetchFile }
+  async function uploadFile(file: File, targetDir: string) {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('targetDir', targetDir)
+    const res = await fetch(`${API_BASE}/api/fs/upload`, { method: 'POST', body: form })
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+    return res.json()
+  }
+
+  async function createDir(path: string) {
+    const res = await fetch(`${API_BASE}/api/fs/mkdir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    })
+    if (!res.ok) throw new Error(`Mkdir failed: ${res.status}`)
+    return res.json()
+  }
+
+  async function renamePath(oldPath: string, newPath: string) {
+    const res = await fetch(`${API_BASE}/api/fs/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPath, newPath }),
+    })
+    if (!res.ok) throw new Error(`Rename failed: ${res.status}`)
+    return res.json()
+  }
+
+  async function deletePath(path: string) {
+    const res = await fetch(`${API_BASE}/api/fs/file?path=${encodeURIComponent(path)}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
+    return res.json()
+  }
+
+  return { tree, file, loading, error, fetchTree, fetchFile, uploadFile, createDir, renamePath, deletePath }
 }

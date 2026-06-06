@@ -43,6 +43,52 @@ const stats = computed(() => data.value?.stats || {
   habitRate: 0
 })
 
+// --- Filters ---
+const todoPriorityFilter = ref<string>('全部')
+const todoCategoryFilter = ref<string>('全部')
+const taskStatusFilter = ref<string>('全部')
+
+const todoPriorityOptions = ['全部', '1st', '2nd', '3rd']
+const todoCategoryOptions = ['全部', '工作', '非工作']
+const taskStatusOptions = ['全部', '进行中', '待开始', '已完成', '暂停']
+
+const filteredTodos = computed(() => {
+  return todos.value.filter((todo: any) => {
+    if (todoPriorityFilter.value !== '全部' && todo.priority !== todoPriorityFilter.value) return false
+    if (todoCategoryFilter.value === '工作' && !(todo.category || '').startsWith('💼')) return false
+    if (todoCategoryFilter.value === '非工作' && (todo.category || '').startsWith('💼')) return false
+    return true
+  })
+})
+
+const filteredTasks = computed(() => {
+  const statusMap: Record<string, string> = {
+    '进行中': 'in-progress',
+    '待开始': 'todo',
+    '已完成': 'done',
+    '暂停': 'paused'
+  }
+  return tasks.value.filter((task: any) => {
+    if (taskStatusFilter.value === '全部') return true
+    return task.status === statusMap[taskStatusFilter.value]
+  })
+})
+
+// --- Expand/collapse ---
+const showAllTodos = ref(false)
+const showAllTasks = ref(false)
+
+const displayTodos = computed(() => {
+  const list = filteredTodos.value
+  return showAllTodos.value ? list : list.slice(0, 5)
+})
+
+const displayTasks = computed(() => {
+  const list = filteredTasks.value
+  return showAllTasks.value ? list : list.slice(0, 5)
+})
+
+// --- Helpers ---
 function priorityColor(p: string) {
   if (p === '1st' || p === 'urgent') return '#ef4444'
   if (p === '2nd' || p === 'high') return '#f59e0b'
@@ -53,8 +99,9 @@ function priorityColor(p: string) {
 function statusTag(s: string) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
     'in-progress': { label: '进行中', color: '#7170ff', bg: 'rgba(113,112,255,0.1)' },
-    'todo': { label: '待办', color: '#62666d', bg: 'rgba(255,255,255,0.04)' },
+    'todo': { label: '待开始', color: '#62666d', bg: 'rgba(255,255,255,0.04)' },
     'done': { label: '已完成', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+    'paused': { label: '暂停', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
   }
   return map[s] || map['todo']
 }
@@ -96,10 +143,31 @@ function statusTag(s: string) {
           <div class="panel-header">
             <span class="panel-icon">📝</span>
             <span class="panel-title">待办事项</span>
-            <span class="panel-count">{{ stats.pendingTodos }}</span>
+            <span class="panel-count">{{ filteredTodos.length }}</span>
+          </div>
+          <!-- Todo filters -->
+          <div class="filter-row">
+            <div class="filter-group">
+              <button
+                v-for="opt in todoPriorityOptions"
+                :key="opt"
+                class="filter-pill"
+                :class="{ active: todoPriorityFilter === opt }"
+                @click="todoPriorityFilter = opt"
+              >{{ opt }}</button>
+            </div>
+            <div class="filter-group">
+              <button
+                v-for="opt in todoCategoryOptions"
+                :key="opt"
+                class="filter-pill"
+                :class="{ active: todoCategoryFilter === opt }"
+                @click="todoCategoryFilter = opt"
+              >{{ opt }}</button>
+            </div>
           </div>
           <div class="todo-list">
-            <a v-for="todo in todos" :key="todo.id" class="todo-item" :class="{ done: todo.done }" :href="todo.url" target="_blank">
+            <a v-for="todo in displayTodos" :key="todo.id" class="todo-item" :class="{ done: todo.done }" :href="todo.url" target="_blank">
               <div class="todo-check" :class="{ checked: todo.done }">
                 <svg v-if="todo.done" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
               </div>
@@ -107,6 +175,11 @@ function statusTag(s: string) {
               <span class="todo-text">{{ todo.title }}</span>
             </a>
           </div>
+          <button
+            v-if="filteredTodos.length > 5"
+            class="expand-btn"
+            @click="showAllTodos = !showAllTodos"
+          >{{ showAllTodos ? '收起' : '查看全部 (' + filteredTodos.length + ')' }}</button>
         </div>
 
         <!-- Task List -->
@@ -114,10 +187,22 @@ function statusTag(s: string) {
           <div class="panel-header">
             <span class="panel-icon">🎯</span>
             <span class="panel-title">任务</span>
-            <span class="panel-count">{{ tasks.length }}</span>
+            <span class="panel-count">{{ filteredTasks.length }}</span>
+          </div>
+          <!-- Task filters -->
+          <div class="filter-row">
+            <div class="filter-group">
+              <button
+                v-for="opt in taskStatusOptions"
+                :key="opt"
+                class="filter-pill"
+                :class="{ active: taskStatusFilter === opt }"
+                @click="taskStatusFilter = opt"
+              >{{ opt }}</button>
+            </div>
           </div>
           <div class="task-list">
-            <a v-for="task in tasks" :key="task.id" class="task-item" :href="task.url" target="_blank">
+            <a v-for="task in displayTasks" :key="task.id" class="task-item" :href="task.url" target="_blank">
               <div class="task-info">
                 <span class="task-title">{{ task.title }}</span>
                 <span class="task-tag" :style="{ color: statusTag(task.status).color, background: statusTag(task.status).bg }">
@@ -130,6 +215,11 @@ function statusTag(s: string) {
               </div>
             </a>
           </div>
+          <button
+            v-if="filteredTasks.length > 5"
+            class="expand-btn"
+            @click="showAllTasks = !showAllTasks"
+          >{{ showAllTasks ? '收起' : '查看全部 (' + filteredTasks.length + ')' }}</button>
         </div>
       </div>
 
@@ -201,6 +291,35 @@ function statusTag(s: string) {
 }
 .panel-badge { font-size: 11px; color: var(--text-quaternary); margin-left: auto; font-family: var(--font-mono); }
 
+/* Filter pills */
+.filter-row {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.filter-group {
+  display: flex; gap: 4px;
+}
+.filter-pill {
+  font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 9999px;
+  border: 1px solid var(--border-subtle); background: transparent;
+  color: var(--text-quaternary); cursor: pointer; transition: all 0.15s;
+  line-height: 1.4;
+}
+.filter-pill:hover {
+  color: var(--text-secondary); border-color: var(--border-standard);
+  background: var(--hover-bg);
+}
+.filter-pill.active {
+  color: #fff; background: var(--accent); border-color: var(--accent);
+}
+
+/* Expand button */
+.expand-btn {
+  display: block; width: 100%; margin-top: 10px; padding: 6px 0;
+  font-size: 12px; color: var(--text-quaternary); background: none;
+  border: none; cursor: pointer; text-align: center; transition: color 0.15s;
+}
+.expand-btn:hover { color: var(--accent); }
+
 /* Todo */
 .todo-list { display: flex; flex-direction: column; gap: 6px; }
 .todo-item {
@@ -254,5 +373,6 @@ function statusTag(s: string) {
   .stats-bar { grid-template-columns: 1fr 1fr; }
   .two-col { grid-template-columns: 1fr; }
   .habit-grid { grid-template-columns: 1fr 1fr; }
+  .filter-row { flex-direction: column; }
 }
 </style>

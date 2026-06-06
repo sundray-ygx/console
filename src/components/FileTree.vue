@@ -16,9 +16,45 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'select', path: string): void
+  (e: 'download', path: string): void
+  (e: 'rename', path: string, newName: string): void
+  (e: 'delete', path: string): void
 }>()
 
 const expandedDirs = ref<Set<string>>(new Set())
+const activeMenu = ref<string | null>(null)
+const renamingPath = ref<string | null>(null)
+const renameInput = ref('')
+
+function showMenu(path: string) { activeMenu.value = path }
+function hideMenu() { activeMenu.value = null }
+
+function startRename(item: TreeItem) {
+  renamingPath.value = item.path
+  renameInput.value = item.name
+  activeMenu.value = null
+}
+
+function confirmRename(item: TreeItem) {
+  if (renameInput.value && renameInput.value !== item.name) {
+    const dir = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : ''
+    const newPath = dir ? `${dir}/${renameInput.value}` : renameInput.value
+    emit('rename', item.path, newPath)
+  }
+  renamingPath.value = null
+}
+
+function handleDelete(item: TreeItem) {
+  activeMenu.value = null
+  if (confirm(`确定删除 "${item.name}" 吗？`)) {
+    emit('delete', item.path)
+  }
+}
+
+function handleDownload(item: TreeItem) {
+  activeMenu.value = null
+  emit('download', item.path)
+}
 
 function toggleDir(path: string) {
   if (expandedDirs.value.has(path)) {
@@ -55,7 +91,7 @@ function handleClick(item: TreeItem) {
 </script>
 
 <template>
-  <div class="file-tree">
+  <div class="file-tree" @click="hideMenu">
     <div
       v-for="{ item, depth } in flatTree"
       :key="item.path"
@@ -87,7 +123,29 @@ function handleClick(item: TreeItem) {
         {{ item.type === 'dir' ? (isExpanded(item.path) ? '📂' : '📁') : '📄' }}
       </span>
 
-      <span class="item-name">{{ item.name }}</span>
+      <input
+        v-if="renamingPath === item.path"
+        v-model="renameInput"
+        class="rename-input"
+        @keyup.enter="confirmRename(item)"
+        @keyup.escape="renamingPath = null"
+        @blur="confirmRename(item)"
+        @click.stop
+      />
+      <span v-else class="item-name">{{ item.name }}</span>
+      <template v-if="item.type === 'file'">
+        <button
+          v-if="activeMenu !== item.path && renamingPath !== item.path"
+          class="action-btn"
+          @click.stop="showMenu(item.path)"
+          title="操作"
+        >···</button>
+        <div v-if="activeMenu === item.path" class="action-menu" @click.stop>
+          <button class="menu-item" @click="handleDownload(item)">下载</button>
+          <button class="menu-item" @click="startRename(item)">重命名</button>
+          <button class="menu-item danger" @click="handleDelete(item)">删除</button>
+        </div>
+      </template>
       <span v-if="item.count !== undefined" class="item-count">{{ item.count }}</span>
     </div>
   </div>
@@ -100,6 +158,7 @@ function handleClick(item: TreeItem) {
 }
 
 .tree-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -156,5 +215,31 @@ function handleClick(item: TreeItem) {
   font-size: 10px;
   color: var(--text-quaternary);
   font-family: var(--font-mono);
+}
+
+.action-btn {
+  background: none; border: none; color: var(--text-quaternary);
+  cursor: pointer; padding: 0 4px; font-size: 14px; letter-spacing: 1px;
+  opacity: 0; transition: opacity 0.15s; flex-shrink: 0;
+}
+.tree-item:hover .action-btn { opacity: 1; }
+.action-menu {
+  position: absolute; right: 8px; top: 100%; z-index: 10;
+  background: var(--bg-panel); border: 1px solid var(--border-standard);
+  border-radius: 6px; padding: 4px 0; min-width: 80px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.menu-item {
+  display: block; width: 100%; text-align: left; padding: 5px 12px;
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 11px; cursor: pointer; font-family: var(--font-sans);
+}
+.menu-item:hover { background: var(--hover-bg); }
+.menu-item.danger { color: #ef4444; }
+.menu-item.danger:hover { background: color-mix(in srgb, #ef4444 10%, transparent); }
+.rename-input {
+  flex: 1; background: var(--bg-canvas); border: 1px solid var(--accent);
+  border-radius: 3px; padding: 1px 4px; font-size: 12px; color: var(--text-primary);
+  font-family: var(--font-mono); outline: none; min-width: 0;
 }
 </style>

@@ -39,6 +39,7 @@ export function useNotion() {
     return fetchJson<any>(`/api/notion/knowledge${qs ? '?' + qs : ''}`)
   }
   async function fetchPdcaTimeline() { return fetchJson<any>('/api/notion/pdca/timeline') }
+  async function fetchPdcaCurrent() { return fetchJson<any>('/api/notion/pdca/current') }
 
-  return { loading, error, fetchDashboard, fetchToday, fetchOkr, fetchWeek, fetchKnowledge, fetchPdcaTimeline }
+  return { loading, error, fetchDashboard, fetchToday, fetchOkr, fetchWeek, fetchKnowledge, fetchPdcaTimeline, fetchPdcaCurrent }
 }

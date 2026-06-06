@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { services, bookmarks } from '../config/services'
+import { bookmarks, services } from '../config/services'
 import MetricBar from '../components/MetricBar.vue'
-import ServiceCard from '../components/ServiceCard.vue'
 import { useSystem } from '../composables/useSystem'
-import { useServices } from '../composables/useServices'
 import { useNotion } from '../composables/useNotion'
 
 // ── Composables ──
 const { data: sys, refresh: refreshSystem } = useSystem(10000)
-const { healthMap, refresh: refreshServices } = useServices(30000)
 const { fetchDashboard } = useNotion()
 
 // ── State ──
@@ -35,11 +32,6 @@ const dateStr = computed(() => {
   return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周${days[d.getDay()]}`
 })
 
-const filteredServices = computed(() => {
-  if (!searchQuery.value.trim()) return null
-  const q = searchQuery.value.toLowerCase()
-  return services.filter(s => s.name.toLowerCase().includes(q) || s.desc.includes(q) || s.domain.includes(q))
-})
 const filteredBookmarks = computed(() => {
   if (!searchQuery.value.trim()) return null
   const q = searchQuery.value.toLowerCase()
@@ -110,10 +102,6 @@ onUnmounted(() => {
   if (timer) clearInterval(timer)
   if (notionTimer) clearInterval(notionTimer)
 })
-
-const coreServices = services.filter(s => s.category === 'core')
-const storageServices = services.filter(s => s.category === 'storage')
-const toolServices = services.filter(s => s.category === 'tools')
 </script>
 
 <template>
@@ -132,14 +120,7 @@ const toolServices = services.filter(s => s.category === 'tools')
     </div>
 
     <!-- Search Results -->
-    <section v-if="filteredServices?.length || filteredBookmarks?.length" class="search-results">
-      <div v-if="filteredServices?.length" class="sr-group">
-        <span class="sr-label">服务</span>
-        <a v-for="s in filteredServices" :key="s.id" :href="s.url" target="_blank" class="sr-item">
-          <span class="sr-name">{{ s.name }}</span>
-          <span class="sr-domain">{{ s.domain }}</span>
-        </a>
-      </div>
+    <section v-if="filteredBookmarks?.length" class="search-results">
       <div v-if="filteredBookmarks?.length" class="sr-group">
         <span class="sr-label">工具</span>
         <a v-for="b in filteredBookmarks" :key="b.name" :href="b.url" target="_blank" class="sr-item">
@@ -257,39 +238,22 @@ const toolServices = services.filter(s => s.category === 'tools')
       </div>
     </section>
 
-    <!-- Core Services -->
+    <!-- Self-hosted Services -->
     <section class="section">
       <div class="section-header">
-        <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span class="section-title">核心服务</span>
+        <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg>
+        <span class="section-title">自托管服务</span>
         <div class="section-line"></div>
       </div>
-      <div class="card-grid">
-        <ServiceCard v-for="s in coreServices" :key="s.id" :service="s" :health="healthMap[s.id] || null" />
-      </div>
-    </section>
-
-    <!-- Storage Services -->
-    <section class="section">
-      <div class="section-header">
-        <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <span class="section-title">存储服务</span>
-        <div class="section-line"></div>
-      </div>
-      <div class="card-grid">
-        <ServiceCard v-for="s in storageServices" :key="s.id" :service="s" :health="healthMap[s.id] || null" />
-      </div>
-    </section>
-
-    <!-- Tools -->
-    <section class="section" v-if="toolServices.length">
-      <div class="section-header">
-        <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        <span class="section-title">工具</span>
-        <div class="section-line"></div>
-      </div>
-      <div class="card-grid">
-        <ServiceCard v-for="s in toolServices" :key="s.id" :service="s" :health="healthMap[s.id] || null" />
+      <div class="service-grid">
+        <a v-for="s in services" :key="s.id" :href="s.url" target="_blank" class="service-link" :title="s.hint || ''">
+          <span class="svc-emoji">{{ s.icon }}</span>
+          <div class="svc-info">
+            <span class="svc-name">{{ s.name }}</span>
+            <span class="svc-desc">{{ s.hint || s.desc }}</span>
+          </div>
+          <svg class="svc-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
       </div>
     </section>
 
@@ -404,6 +368,23 @@ const toolServices = services.filter(s => s.category === 'tools')
 
 /* Card Grid */
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+
+/* Services */
+.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.service-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  text-decoration: none; transition: all 0.15s ease;
+}
+.service-link:hover { background: rgba(255,255,255,0.05); border-color: var(--border-standard); }
+.svc-emoji { font-size: 22px; flex-shrink: 0; }
+.svc-info { flex: 1; min-width: 0; }
+.svc-name { display: block; font-size: 13px; font-weight: 510; color: var(--text-secondary); }
+.service-link:hover .svc-name { color: var(--text-primary); }
+.svc-desc { display: block; font-size: 11px; color: var(--text-quaternary); margin-top: 2px; }
+.svc-arrow { color: var(--text-quaternary); flex-shrink: 0; transition: color 0.15s; }
+.service-link:hover .svc-arrow { color: var(--accent); }
 
 /* Bookmarks */
 .bookmark-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }

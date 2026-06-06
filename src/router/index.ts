@@ -41,10 +41,10 @@ const router = createRouter({
       meta: { title: 'Hermes 知识库', breadcrumb: [{ label: '知识' }, { label: 'Hermes 知识库', icon: '📖' }] }
     },
     {
-      path: '/services/:id',
-      name: 'service',
-      component: () => import('../views/ServiceView.vue'),
-      meta: { title: '服务', breadcrumb: [{ label: '服务' }] }
+      path: '/learn',
+      name: 'learn',
+      component: () => import('../views/LearnView.vue'),
+      meta: { title: '学习中心', breadcrumb: [{ label: '知识' }, { label: '学习中心', icon: '🎓' }] }
     },
     {
       path: '/settings',

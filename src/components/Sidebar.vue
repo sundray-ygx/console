@@ -77,10 +77,10 @@ function isActive(path: string): boolean {
 }
 .logo-mark {
   width: 28px; height: 28px; min-width: 28px; display: flex; align-items: center; justify-content: center;
-  background: rgba(113,112,255,0.1); border-radius: 6px; border: 1px solid rgba(113,112,255,0.15);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 6px; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent); transition: background 0.15s;
 }
-.sidebar-logo:hover .logo-mark { background: rgba(113,112,255,0.15); }
+.sidebar-logo:hover .logo-mark { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .logo-text { font-size: 14px; font-weight: 510; letter-spacing: -0.182px; color: var(--text-primary); white-space: nowrap; }
 
 /* Nav */
@@ -96,8 +96,8 @@ function isActive(path: string): boolean {
   color: var(--text-tertiary); font-size: 13px; font-weight: 450;
   transition: all 0.15s ease; white-space: nowrap; overflow: hidden;
 }
-.nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-secondary); }
-.nav-item.active { background: rgba(113,112,255,0.1); color: var(--accent); }
+.nav-item:hover { background: var(--hover-bg); color: var(--text-secondary); }
+.nav-item.active { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
 .nav-icon { font-size: 16px; min-width: 20px; text-align: center; flex-shrink: 0; }
 .nav-name { overflow: hidden; text-overflow: ellipsis; }
 
@@ -108,10 +108,10 @@ function isActive(path: string): boolean {
 /* Toggle */
 .sidebar-toggle {
   flex-shrink: 0; margin: 8px; padding: 8px;
-  background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);
+  background: var(--hover-bg); border: 1px solid var(--border-subtle);
   border-radius: 8px; color: var(--text-quaternary); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s ease;
 }
-.sidebar-toggle:hover { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+.sidebar-toggle:hover { background: var(--active-bg); color: var(--text-secondary); }
 </style>
