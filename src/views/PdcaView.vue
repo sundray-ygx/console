@@ -1,115 +1,136 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useNotion } from '../composables/useNotion'
 
-interface PlanItem {
-  id: string
+type PeriodLevel = 'week' | 'month' | 'quarter'
+
+interface PeriodItem {
   title: string
+  date?: string | null
+}
+
+interface PlanItem extends PeriodItem {
+  id: string
   plan: string | null
-  level: 'week' | 'month' | 'quarter'
-  date?: string | null
+  missing?: boolean
 }
 
-interface TodoItem {
+interface ReviewItem extends PeriodItem {
   id: string
-  title: string
-  priority?: string
-  category?: string
-  dueDate?: string
-  url?: string
-}
-
-interface ReviewItem {
-  id: string
-  title: string
   review: string | null
-  level: 'day' | 'week' | 'month' | 'quarter'
-  date?: string | null
+  generated?: boolean
+  sourceCount?: number
+  llm?: boolean
 }
 
-const { fetchPdcaCurrent, fetchToday, loading, error } = useNotion()
+interface PdcaCurrent {
+  period?: Record<PeriodLevel, PeriodItem | null>
+  plan?: Record<PeriodLevel, PlanItem | null>
+  review?: Record<PeriodLevel, ReviewItem | null>
+}
 
-const plans = ref<PlanItem[]>([])
-const todos = ref<TodoItem[]>([])
-const checkReviews = ref<ReviewItem[]>([])
-const actReviews = ref<ReviewItem[]>([])
+const { fetchPdcaCurrent, loading, error } = useNotion()
 
-onMounted(async () => {
-  const [currentData, todayData] = await Promise.all([
-    fetchPdcaCurrent(),
-    fetchToday(),
-  ])
+const current = ref<PdcaCurrent | null>(null)
 
-  // Plan column from /api/notion/pdca/current
-  if (currentData) {
-    const planItems: PlanItem[] = []
-    if (currentData.plan?.quarter?.plan) {
-      planItems.push({ ...currentData.plan.quarter, id: currentData.plan.quarter.id + '-plan', level: 'quarter' })
-    }
-    if (currentData.plan?.month?.plan) {
-      planItems.push({ ...currentData.plan.month, id: currentData.plan.month.id + '-plan', level: 'month' })
-    }
-    if (currentData.plan?.week?.plan) {
-      planItems.push({ ...currentData.plan.week, id: currentData.plan.week.id + '-plan', level: 'week' })
-    }
-    plans.value = planItems
+const levels: { key: PeriodLevel; label: string; planTitle: string; reviewTitle: string }[] = [
+  { key: 'week', label: '本周', planTitle: '本周计划', reviewTitle: '本周复盘' },
+  { key: 'month', label: '本月', planTitle: '本月计划', reviewTitle: '本月复盘' },
+  { key: 'quarter', label: '本季度', planTitle: '本季度计划', reviewTitle: '本季度复盘' },
+]
 
-    // Check column: day reviews + week review
-    const checkItems: ReviewItem[] = []
-    if (currentData.check?.dayReviews) {
-      for (const dr of currentData.check.dayReviews) {
-        checkItems.push({ ...dr, id: dr.id + '-review', level: 'day' })
-      }
-    }
-    if (currentData.check?.weekReview?.review) {
-      checkItems.push({ ...currentData.check.weekReview, id: currentData.check.weekReview.id + '-review', level: 'week' })
-    }
-    checkReviews.value = checkItems
-
-    // Act column: month review + quarter review
-    const actItems: ReviewItem[] = []
-    if (currentData.act?.monthReview?.review) {
-      actItems.push({ ...currentData.act.monthReview, id: currentData.act.monthReview.id + '-review', level: 'month' })
-    }
-    if (currentData.act?.quarterReview?.review) {
-      actItems.push({ ...currentData.act.quarterReview, id: currentData.act.quarterReview.id + '-review', level: 'quarter' })
-    }
-    actReviews.value = actItems
-  }
-
-  // Do column from /api/notion/today
-  if (todayData?.todos) {
-    todos.value = todayData.todos
-      .filter((t: any) => t.priority === '1st' || t.priority === '2nd')
-      .slice(0, 15)
-      .map((t: any) => ({
-        id: t.id,
-        title: t.title,
-        priority: t.priority,
-        category: t.category,
-        dueDate: t.dueDate,
-        url: t.url,
-      }))
-  }
+const periodText = computed(() => {
+  if (!current.value?.period) return '当前周期'
+  return levels
+    .map(({ key, label }) => {
+      const item = current.value?.period?.[key]
+      return item?.title ? `${label}：${item.title}` : null
+    })
+    .filter(Boolean)
+    .join(' / ') || '当前周期'
 })
 
-function truncate(text: string, len = 120): string {
-  if (!text) return ''
-  return text.length > len ? text.substring(0, len) + '...' : text
+onMounted(async () => {
+  current.value = await fetchPdcaCurrent()
+})
+
+function formatDate(date?: string | null) {
+  return date || '当前周期'
 }
 
-function levelBadge(level: string) {
-  const map: Record<string, string> = { week: '周', month: '月', quarter: '季', day: '日' }
-  return map[level] || level
+function sourceText(item?: ReviewItem | null) {
+  if (!item?.generated) return 'Notion 原始字段'
+  return item.llm
+    ? `LLM 总结 · ${item.sourceCount || 0} 条周复盘`
+    : `规则汇总 · ${item.sourceCount || 0} 条周复盘`
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function renderMarkdown(text?: string | null) {
+  if (!text) return ''
+
+  const html: string[] = []
+  let inList = false
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) {
+      if (inList) {
+        html.push('</ul>')
+        inList = false
+      }
+      continue
+    }
+
+    if (line.startsWith('### ')) {
+      if (inList) { html.push('</ul>'); inList = false }
+      html.push(`<h3>${escapeHtml(line.slice(4))}</h3>`)
+      continue
+    }
+    if (line.startsWith('## ')) {
+      if (inList) { html.push('</ul>'); inList = false }
+      html.push(`<h2>${escapeHtml(line.slice(3))}</h2>`)
+      continue
+    }
+    if (line.startsWith('# ')) {
+      if (inList) { html.push('</ul>'); inList = false }
+      html.push(`<h1>${escapeHtml(line.slice(2))}</h1>`)
+      continue
+    }
+    if (/^[-*]\s+/.test(line)) {
+      if (!inList) {
+        html.push('<ul>')
+        inList = true
+      }
+      html.push(`<li>${escapeHtml(line.replace(/^[-*]\s+/, ''))}</li>`)
+      continue
+    }
+
+    if (inList) {
+      html.push('</ul>')
+      inList = false
+    }
+    html.push(`<p>${escapeHtml(line)}</p>`)
+  }
+
+  if (inList) html.push('</ul>')
+  return html.join('')
 }
 </script>
 
 <template>
   <div class="pdca">
     <h1 class="page-title">PDCA 看板</h1>
-    <p class="page-subtitle">Plan → Do → Check → Act</p>
+    <p class="page-subtitle">{{ periodText }}</p>
 
-    <div v-if="loading && plans.length === 0" class="loading-state">
+    <div v-if="loading && !current" class="loading-state">
       <span class="loading-spinner">⟳</span>
       <p>加载中...</p>
     </div>
@@ -119,83 +140,67 @@ function levelBadge(level: string) {
       <p>{{ error }}</p>
     </div>
 
-    <div v-else class="kanban">
-      <!-- P: Plan -->
-      <div class="kanban-column plan">
-        <div class="column-header">
-          <span class="column-letter">P</span>
-          <span class="column-title">Plan · 计划</span>
-          <span class="column-count">{{ plans.length }}</span>
-        </div>
-        <div class="column-cards">
-          <div v-for="item in plans" :key="item.id" class="card">
-            <div class="card-header">
-              <span class="card-badge plan-level">{{ levelBadge(item.level) }}计划</span>
-              <span v-if="item.date" class="card-date">{{ item.date }}</span>
-            </div>
-            <p class="card-text">{{ truncate(item.plan, 200) }}</p>
+    <div v-else class="pdca-layout">
+      <section class="panel plan-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📋</span>
+          <div>
+            <h2 class="panel-title">计划</h2>
+            <p class="panel-desc">本周 / 本月 / 本季度的计划内容</p>
           </div>
-          <div v-if="plans.length === 0" class="empty-hint">暂无计划</div>
         </div>
-      </div>
 
-      <!-- D: Do -->
-      <div class="kanban-column do">
-        <div class="column-header">
-          <span class="column-letter">D</span>
-          <span class="column-title">Do · 执行</span>
-          <span class="column-count">{{ todos.length }}</span>
-        </div>
-        <div class="column-cards">
-          <div v-for="item in todos" :key="item.id" class="card todo-card">
-            <div class="card-header">
-              <span v-if="item.priority" class="card-badge" :class="'prio-' + item.priority">{{ item.priority }}</span>
-              <span v-if="item.dueDate" class="card-date">{{ item.dueDate }}</span>
+        <div class="period-grid">
+          <article v-for="level in levels" :key="level.key" class="period-card">
+            <div class="period-header">
+              <div>
+                <span class="period-label">{{ level.label }}</span>
+                <h3 class="period-title">{{ level.planTitle }}</h3>
+              </div>
+              <span class="period-date">{{ formatDate(current?.plan?.[level.key]?.date) }}</span>
             </div>
-            <p class="card-text">{{ item.title }}</p>
-            <span v-if="item.category" class="card-category">{{ item.category }}</span>
-          </div>
-          <div v-if="todos.length === 0" class="empty-hint">暂无待办</div>
+            <div
+              v-if="current?.plan?.[level.key]?.plan"
+              class="period-content markdown-content"
+              v-html="renderMarkdown(current.plan[level.key]?.plan)"
+            ></div>
+            <p v-else class="empty-content">暂无{{ level.planTitle }}</p>
+          </article>
         </div>
-      </div>
+      </section>
 
-      <!-- C: Check -->
-      <div class="kanban-column check">
-        <div class="column-header">
-          <span class="column-letter">C</span>
-          <span class="column-title">Check · 检查</span>
-          <span class="column-count">{{ checkReviews.length }}</span>
-        </div>
-        <div class="column-cards">
-          <div v-for="item in checkReviews" :key="item.id" class="card">
-            <div class="card-header">
-              <span class="card-badge check-level">{{ levelBadge(item.level) }}复盘</span>
-              <span v-if="item.date" class="card-date">{{ item.date }}</span>
-            </div>
-            <p class="card-text">{{ truncate(item.review, 150) }}</p>
+      <section class="panel review-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🔎</span>
+          <div>
+            <h2 class="panel-title">复盘</h2>
+            <p class="panel-desc">周复盘来自 Notion，月/季度复盘由 LLM 结合周计划与周复盘生成</p>
           </div>
-          <div v-if="checkReviews.length === 0" class="empty-hint">暂无复盘</div>
         </div>
-      </div>
 
-      <!-- A: Act -->
-      <div class="kanban-column act">
-        <div class="column-header">
-          <span class="column-letter">A</span>
-          <span class="column-title">Act · 改进</span>
-          <span class="column-count">{{ actReviews.length }}</span>
-        </div>
-        <div class="column-cards">
-          <div v-for="item in actReviews" :key="item.id" class="card">
-            <div class="card-header">
-              <span class="card-badge act-level">{{ levelBadge(item.level) }}复盘</span>
-              <span v-if="item.date" class="card-date">{{ item.date }}</span>
+        <div class="period-grid">
+          <article v-for="level in levels" :key="level.key" class="period-card">
+            <div class="period-header">
+              <div>
+                <span class="period-label">{{ level.label }}</span>
+                <h3 class="period-title">{{ level.reviewTitle }}</h3>
+              </div>
+              <div class="period-meta">
+                <span class="source-badge" :class="{ generated: current?.review?.[level.key]?.generated, llm: current?.review?.[level.key]?.llm }">
+                  {{ sourceText(current?.review?.[level.key]) }}
+                </span>
+                <span class="period-date">{{ formatDate(current?.review?.[level.key]?.date) }}</span>
+              </div>
             </div>
-            <p class="card-text">{{ truncate(item.review, 150) }}</p>
-          </div>
-          <div v-if="actReviews.length === 0" class="empty-hint">暂无行动</div>
+            <div
+              v-if="current?.review?.[level.key]?.review"
+              class="period-content markdown-content"
+              v-html="renderMarkdown(current.review[level.key]?.review)"
+            ></div>
+            <p v-else class="empty-content">暂无{{ level.reviewTitle }}</p>
+          </article>
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
@@ -213,93 +218,123 @@ function levelBadge(level: string) {
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .error-icon { font-size: 32px; }
 
-/* Kanban Layout */
-.kanban {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  min-height: 400px;
-}
+.pdca-layout { display: flex; flex-direction: column; gap: 20px; }
 
-.kanban-column {
-  display: flex;
-  flex-direction: column;
-  border-radius: 12px;
+.panel {
   border: 1px solid var(--border-subtle);
+  border-radius: 14px;
   background: var(--bg-surface);
   overflow: hidden;
 }
 
-.column-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 14px 16px;
+.panel-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 18px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.column-letter {
-  width: 28px; height: 28px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; color: #fff;
-}
-.plan .column-letter { background: #7170ff; }
-.do .column-letter { background: #10b981; }
-.check .column-letter { background: #fbbf24; color: #000; }
-.act .column-letter { background: #ef4444; }
+.panel-icon { font-size: 24px; line-height: 1; }
+.panel-title { font-size: 17px; font-weight: 510; color: var(--text-primary); margin-bottom: 4px; }
+.panel-desc { font-size: 12px; color: var(--text-quaternary); }
 
-.column-title { font-size: 13px; font-weight: 510; color: var(--text-secondary); flex: 1; }
-.column-count {
-  font-size: 11px; font-family: var(--font-mono); color: var(--text-quaternary);
-  padding: 2px 6px; border-radius: 4px; background: var(--bg-canvas);
+.period-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 14px;
 }
 
-.column-cards {
-  flex: 1; overflow-y: auto; padding: 10px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-
-/* Cards */
-.card {
-  padding: 12px; border-radius: 8px;
+.period-card {
+  min-width: 0;
+  padding: 14px;
   border: 1px solid var(--border-subtle);
+  border-radius: 10px;
   background: var(--bg-panel);
-  transition: border-color 0.15s;
-}
-.card:hover { border-color: var(--border-standard); }
-
-.card-header {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
 }
 
-.card-badge {
-  font-size: 10px; padding: 1px 6px; border-radius: 4px;
-  font-weight: 500;
-}
-.plan-level { background: color-mix(in srgb, #7170ff 15%, transparent); color: #7170ff; }
-.check-level { background: color-mix(in srgb, #fbbf24 15%, transparent); color: #fbbf24; }
-.act-level { background: color-mix(in srgb, #ef4444 15%, transparent); color: #ef4444; }
-
-.prio-1st { background: color-mix(in srgb, #ef4444 15%, transparent); color: #ef4444; }
-.prio-2nd { background: color-mix(in srgb, #fbbf24 15%, transparent); color: #fbbf24; }
-.prio-3rd { background: color-mix(in srgb, #10b981 15%, transparent); color: #10b981; }
-
-.card-date { font-size: 10px; font-family: var(--font-mono); color: var(--text-quaternary); }
-.card-text {
-  font-size: 12px; color: var(--text-tertiary); line-height: 1.6;
-  white-space: pre-line; word-break: break-all;
-}
-.card-category {
-  display: inline-block; margin-top: 6px;
-  font-size: 10px; color: var(--text-quaternary);
+.period-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
 }
 
-.empty-hint {
-  text-align: center; padding: 24px 12px; font-size: 12px; color: var(--text-quaternary);
+.period-label {
+  display: inline-flex;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 510;
+  color: var(--accent);
 }
+
+.period-title { font-size: 15px; font-weight: 510; color: var(--text-primary); }
+
+.period-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.period-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-quaternary);
+  white-space: nowrap;
+}
+
+.source-badge {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.source-badge.generated {
+  color: var(--accent);
+  border-color: rgba(113,112,255,0.28);
+  background: rgba(113,112,255,0.08);
+}
+.source-badge.llm { color: #10b981; border-color: rgba(16,185,129,0.28); background: rgba(16,185,129,0.08); }
+
+.period-content {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.markdown-content :deep(h1),
+.markdown-content :deep(h2),
+.markdown-content :deep(h3) {
+  color: var(--text-primary);
+  font-weight: 510;
+  margin: 14px 0 8px;
+}
+.markdown-content :deep(h1) { font-size: 16px; }
+.markdown-content :deep(h2) { font-size: 15px; }
+.markdown-content :deep(h3) { font-size: 14px; color: var(--accent); }
+.markdown-content :deep(h1:first-child),
+.markdown-content :deep(h2:first-child),
+.markdown-content :deep(h3:first-child) { margin-top: 0; }
+.markdown-content :deep(p) { margin: 0 0 8px; }
+.markdown-content :deep(ul) { margin: 0 0 12px; padding-left: 18px; }
+.markdown-content :deep(li) { margin-bottom: 5px; }
+
+.empty-content { font-size: 13px; color: var(--text-quaternary); }
 
 @media (max-width: 1200px) {
-  .kanban { grid-template-columns: repeat(2, 1fr); }
+  .period-grid { grid-template-columns: 1fr; }
 }
-@media (max-width: 768px) {
-  .kanban { grid-template-columns: 1fr; }
+
+@media (max-width: 560px) {
+  .period-header { flex-direction: column; }
+  .period-meta { align-items: flex-start; }
 }
 </style>
