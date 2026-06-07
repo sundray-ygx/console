@@ -277,6 +277,7 @@ watch(() => route.query, () => {
         :lesson="currentLesson"
         :chapter="currentChapter"
         :progress="currentLessonProgress"
+        :course-id="selectedCourseId"
         @update-status="onUpdateStatus"
         @prev-lesson="onPrevLesson"
         @next-lesson="onNextLesson"

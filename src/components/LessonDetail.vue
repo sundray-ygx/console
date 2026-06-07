@@ -7,6 +7,7 @@ const props = defineProps<{
   lesson: Lesson | null
   chapter: Chapter | null
   progress: LessonProgress | null        // 当前课时的进度状态
+  courseId?: string | null               // 当前课程 ID（用于复习结果记录）
 }>()
 
 // 练习答案展开状态（按 index）
@@ -38,6 +39,32 @@ const STATUSES: { value: LessonProgress['status']; label: string; icon: string }
   { value: 'review',   label: '复习', icon: '↻' },
   { value: 'favorite', label: '收藏', icon: '★' },
 ]
+
+const recording = ref(false)
+
+async function recordReview(outcome: string) {
+  if (!props.courseId || !props.lesson?.lesson_id) return
+  recording.value = true
+  try {
+    const res = await fetch(`/api/learn/reviews/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        course_id: props.courseId,
+        lesson_id: props.lesson.lesson_id,
+        outcome,
+      }),
+    })
+    const data = await res.json()
+    if (data.ok) {
+      emit('update-status', 'review')
+    }
+  } catch (e: any) {
+    console.error('Review result failed:', e.message)
+  } finally {
+    recording.value = false
+  }
+}
 
 function typeColor(type: string): string {
   switch (type) {
@@ -186,6 +213,36 @@ function typeColor(type: string): string {
       <section v-else class="art-section">
         <div class="no-materials">
           <span>📂 本节暂无关联资料</span>
+        </div>
+      </section>
+      <!-- Review: Record outcome (SM-2) -->
+      <section v-if="lesson" class="art-section review-outcomes">
+        <h2 class="sec-title">
+          <span class="sec-icon">🔁</span>
+          间隔复习
+          <span v-if="progress?.next_review" class="sec-count">下次 {{ progress.next_review }}</span>
+        </h2>
+        <div class="outcome-list">
+          <button class="outcome-btn again" :disabled="recording" @click="recordReview('again')">
+            <span class="ob-label">Again</span>
+            <span class="ob-desc">完全忘记</span>
+            <span class="ob-int">1 天后</span>
+          </button>
+          <button class="outcome-btn hard" :disabled="recording" @click="recordReview('hard')">
+            <span class="ob-label">Hard</span>
+            <span class="ob-desc">模糊</span>
+            <span class="ob-int">1.2× 间隔</span>
+          </button>
+          <button class="outcome-btn good" :disabled="recording" @click="recordReview('good')">
+            <span class="ob-label">Good</span>
+            <span class="ob-desc">正确</span>
+            <span class="ob-int">1.0× 间隔</span>
+          </button>
+          <button class="outcome-btn easy" :disabled="recording" @click="recordReview('easy')">
+            <span class="ob-label">Easy</span>
+            <span class="ob-desc">轻松</span>
+            <span class="ob-int">1.3× 间隔</span>
+          </button>
         </div>
       </section>
     </article>
@@ -360,6 +417,25 @@ function typeColor(type: string): string {
   grid-template-columns: 1fr;
   gap: 10px;
 }
+/* Review Outcomes */
+.review-outcomes { border-top: 1px solid var(--border-subtle); padding-top: 20px; }
+.outcome-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.outcome-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border-subtle);
+  background: var(--bg-panel); cursor: pointer; transition: all 0.15s;
+  font-family: inherit; min-width: 0;
+}
+.outcome-btn:disabled { opacity: 0.5; cursor: default; }
+.outcome-btn:not(:disabled):hover { border-color: var(--border-standard); transform: translateY(-1px); }
+.outcome-btn.again:not(:disabled):hover { background: rgba(239,68,68,0.06); border-color: #ef4444; }
+.outcome-btn.hard:not(:disabled):hover { background: rgba(245,158,11,0.06); border-color: #f59e0b; }
+.outcome-btn.good:not(:disabled):hover { background: rgba(16,185,129,0.06); border-color: #10b981; }
+.outcome-btn.easy:not(:disabled):hover { background: rgba(113,112,255,0.06); border-color: var(--accent); }
+.ob-label { font-size: 13px; font-weight: 510; color: var(--text-primary); }
+.ob-desc { font-size: 10px; color: var(--text-quaternary); }
+.ob-int { font-size: 10px; font-family: var(--font-mono); color: var(--text-quaternary); }
+
 @media (min-width: 900px) {
   .materials-grid { grid-template-columns: 1fr 1fr; }
 }

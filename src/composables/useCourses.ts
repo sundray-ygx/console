@@ -86,6 +86,12 @@ export interface LessonProgress {
   last_read: string
   read_count?: number
   review_due?: string
+  next_review?: string
+  ease_factor?: number
+  interval_days?: number
+  repetitions?: number
+  lapses?: number
+  last_outcome?: string
 }
 
 export interface Progress {
