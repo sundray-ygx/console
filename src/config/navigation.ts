@@ -8,6 +8,7 @@ export const navGroups = [
     { name: 'Reviews', icon: '🔎', path: '/pdca' },
   ]},
   { label: 'Knowledge', items: [
+    { name: 'Areas', icon: '📂', path: '/areas' },
     { name: 'Resources', icon: '📚', path: '/knowledge' },
     { name: 'Wiki', icon: '📖', path: '/kb' },
   ]},

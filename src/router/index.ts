@@ -47,6 +47,12 @@ const router = createRouter({
       meta: { title: 'Learning Center', breadcrumb: [{ label: 'Learn' }, { label: 'Learning Center', icon: '🎓' }] }
     },
     {
+      path: '/areas',
+      name: 'areas',
+      component: () => import('../views/AreasView.vue'),
+      meta: { title: 'Areas', breadcrumb: [{ label: 'Knowledge' }, { label: 'Areas', icon: '📂' }] }
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import type { Dashboard, Catalog, ReviewDue, ReviewDueItem, DashboardCourseProgress } from '../composables/useCourses'
 import ProgressRing from './ProgressRing.vue'
 
@@ -53,7 +53,7 @@ const nextAction = computed<ActionType | null>(() => {
   return { type: 'explore' }
 })
 
-// Computed: sorted course list (unstarted last, in-progress by recency, completed last)
+// Computed: sorted course list
 const sortedCourses = computed<DashboardCourseProgress[]>(() => {
   const c = props.dashboard?.courses_progress || []
   if (!c.length) return c
@@ -69,6 +69,23 @@ const sortedCourses = computed<DashboardCourseProgress[]>(() => {
     if (b.percent >= 100 && a.percent < 100) return -1
     return 0
   })
+})
+
+// ── Streak / Stats ──
+interface LearnStats {
+  streak: { current: number; longest: number; days: string[] }
+  totalDays: number
+  totalReviews: number
+  totalReads: number
+  lastActivity: string | null
+}
+const stats = ref<LearnStats | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/learn/stats')
+    stats.value = await res.json()
+  } catch {}
 })
 
 // ── Course card helpers ──
@@ -169,6 +186,22 @@ function daysSince(dateStr?: string | null): string {
           <div class="stat-label">Favorites</div>
           <div class="stat-mono">{{ fmt(dashboard?.total_favorited ?? 0) }}</div>
           <div class="stat-sub">⭐ bookmarked lessons</div>
+        </div>
+        <div class="stat-card stat-streak" v-if="stats">
+          <div class="stat-label">Streak</div>
+          <div class="stat-hero-value">
+            <span class="num">{{ stats.streak.current }}</span>
+            <span class="unit">days</span>
+          </div>
+          <div class="stat-sub">
+            longest {{ stats.streak.longest }}d · {{ stats.totalDays }} total ·
+            {{ stats.totalReviews }} reviews
+          </div>
+        </div>
+        <div class="stat-card" v-else>
+          <div class="stat-label">Streak</div>
+          <div class="stat-mono">—</div>
+          <div class="stat-sub">start your first session</div>
         </div>
       </div>
     </section>
@@ -271,9 +304,10 @@ function daysSince(dateStr?: string | null): string {
 .nba-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); }
 
 /* Stats */
-.overview-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 14px; }
-.stat-card { padding: 16px 18px; border-radius: 12px; border: 1px solid var(--border-subtle); background: var(--bg-panel); display: flex; flex-direction: column; gap: 6px; min-height: 80px; }
+.overview-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 12px; }
+.stat-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border-subtle); background: var(--bg-panel); display: flex; flex-direction: column; gap: 6px; min-height: 76px; }
 .stat-progress { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--bg-panel)) 0%, var(--bg-panel) 70%); border-color: color-mix(in srgb, var(--accent) 22%, var(--border-subtle)); }
+.stat-streak { background: linear-gradient(135deg, color-mix(in srgb, #f59e0b 10%, var(--bg-panel)) 0%, var(--bg-panel) 60%); border-color: color-mix(in srgb, #f59e0b 20%, var(--border-subtle)); }
 .stat-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 100%; }
 .stat-hero-value { font-size: 32px; font-weight: 510; letter-spacing: -0.8px; color: var(--text-primary); line-height: 1; font-family: var(--font-mono); }
 .stat-hero-value .unit { font-size: 16px; color: var(--text-tertiary); margin-left: 2px; }

@@ -19,6 +19,68 @@ function toggleAnswer(idx: number) {
     expandedAnswers.value.add(idx)
   }
 }
+
+// ── Recall Prompts ──
+interface RecallItem {
+  id: string
+  question: string
+  answer: string
+  type: 'exercise' | 'recall'
+  mastered: boolean
+}
+const recallExpanded = ref<Set<string>>(new Set())
+const recallMastered = ref<Set<string>>(new Set())
+
+const recallPrompts = computed(() => {
+  const items: RecallItem[] = []
+
+  // From exercises
+  if (props.lesson?.exercises) {
+    props.lesson.exercises.forEach((ex, i) => {
+      if (ex.question) {
+        items.push({
+          id: `ex-${i}`,
+          question: ex.question,
+          answer: ex.answer || ex.hint || '',
+          type: 'exercise',
+          mastered: false,
+        })
+      }
+    })
+  }
+
+  // From key_notes — split by sentences into recall items
+  if (props.lesson?.key_notes) {
+    const notes = props.lesson.key_notes
+      .replace(/^[-*•]\s*/gm, '')
+      .split(/[\n。；]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 10)
+    notes.slice(0, 6).forEach((note, i) => {
+      items.push({
+        id: `recall-${i}`,
+        question: `Recall: ${note.slice(0, 40)}${note.length > 40 ? '...' : ''}`,
+        answer: note,
+        type: 'recall',
+        mastered: false,
+      })
+    })
+  }
+
+  return items.slice(0, 10)
+})
+
+function toggleRecall(id: string) {
+  if (recallExpanded.value.has(id)) recallExpanded.value.delete(id)
+  else recallExpanded.value.add(id)
+}
+
+async function markRecall(id: string, mastered: boolean) {
+  recallMastered.value.add(id)
+  if (props.lesson) {
+    await recordReview(mastered ? 'good' : 'again')
+  }
+}
 // deep_content 渲染：把 **xxx** 转 <strong>，换行符转 <br>
 function renderMd(s: string): string {
   return s
@@ -183,6 +245,35 @@ function typeColor(type: string): string {
             </button>
             <div v-if="expandedAnswers.has(i)" class="ex-answer">
               {{ ex.answer }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recall Prompts (Retrieval Practice) -->
+      <section v-if="recallPrompts.length > 0" class="art-section recall-section">
+        <h2 class="sec-title">
+          <span class="sec-icon">🧠</span>
+          主动回忆
+          <span class="sec-count">{{ recallPrompts.length }}</span>
+        </h2>
+        <p class="sec-remark">看完内容后，试试回忆以下要点</p>
+        <div class="recall-list">
+          <div v-for="item in recallPrompts" :key="item.id" class="recall-card">
+            <div class="recall-q" @click="toggleRecall(item.id)">
+              <svg class="recall-chevron" :class="{ open: recallExpanded.has(item.id) }" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              <span>{{ item.question }}</span>
+            </div>
+            <div v-if="recallExpanded.has(item.id)" class="recall-a">
+              <p>{{ item.answer }}</p>
+              <div class="recall-actions" v-if="!recallMastered.has(item.id)">
+                <button class="recall-btn mastered" @click="markRecall(item.id, true)">✅ 已掌握</button>
+                <button class="recall-btn revisit" @click="markRecall(item.id, false)">🔄 需复习</button>
+              </div>
+              <div v-else class="recall-done">
+                <span class="recall-done-icon">✓</span>
+                已记录
+              </div>
             </div>
           </div>
         </div>
@@ -417,6 +508,26 @@ function typeColor(type: string): string {
   grid-template-columns: 1fr;
   gap: 10px;
 }
+/* Recall Prompts */
+.recall-section { }
+.sec-remark { font-size: 12px; color: var(--text-quaternary); margin: -8px 0 14px; }
+.recall-list { display: flex; flex-direction: column; gap: 8px; }
+.recall-card { border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-panel); overflow: hidden; }
+.recall-q { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: background 0.12s; }
+.recall-q:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.recall-chevron { flex-shrink: 0; transition: transform 0.15s; color: var(--text-quaternary); }
+.recall-chevron.open { transform: rotate(90deg); }
+.recall-a { padding: 0 12px 12px; border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 0; }
+.recall-a p { font-size: 13px; line-height: 1.7; color: var(--text-tertiary); margin: 0 0 10px; }
+.recall-actions { display: flex; gap: 8px; }
+.recall-btn { font-size: 12px; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--bg-canvas); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+.recall-btn.mastered { color: #10b981; }
+.recall-btn.mastered:hover { background: color-mix(in srgb, #10b981 10%, transparent); border-color: #10b981; }
+.recall-btn.revisit { color: #f59e0b; }
+.recall-btn.revisit:hover { background: color-mix(in srgb, #f59e0b 10%, transparent); border-color: #f59e0b; }
+.recall-done { font-size: 12px; color: #10b981; display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+.recall-done-icon { font-size: 14px; font-weight: 700; }
+
 /* Review Outcomes */
 .review-outcomes { border-top: 1px solid var(--border-subtle); padding-top: 20px; }
 .outcome-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
