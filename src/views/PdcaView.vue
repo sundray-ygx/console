@@ -127,8 +127,8 @@ function renderMarkdown(text?: string | null) {
 
 <template>
   <div class="pdca">
-    <h1 class="page-title">PDCA 看板</h1>
-    <p class="page-subtitle">{{ periodText }}</p>
+    <h1 class="page-title">Reviews</h1>
+    <p class="page-subtitle">{{ periodText }} · 计划、复盘与下阶段改进</p>
 
     <div v-if="loading && !current" class="loading-state">
       <span class="loading-spinner">⟳</span>

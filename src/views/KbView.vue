@@ -127,8 +127,8 @@ function fmtTime(iso: string) {
 
 <template>
   <div class="kb">
-    <h1 class="page-title">Hermes 知识库</h1>
-    <p class="page-subtitle">本地知识文件浏览器</p>
+    <h1 class="page-title">Wiki</h1>
+    <p class="page-subtitle">Hermes 知识库文件 · 本地 Markdown 知识管理</p>
 
     <div v-if="loading && tree.length === 0" class="loading-state">
       <span class="loading-spinner">⟳</span>

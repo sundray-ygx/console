@@ -220,10 +220,10 @@ watch(() => route.query, () => {
   <div class="learn">
     <!-- 顶栏 -->
     <header class="learn-head">
-      <h1 class="page-title">学习中心</h1>
+      <h1 class="page-title">Learning Center</h1>
       <p class="page-subtitle">
         {{ viewMode === 'dashboard'
-          ? `${catalog?.total_courses ?? 0} 个课程 · ${catalog?.total_materials ?? 0} 篇资料`
+          ? `${catalog?.total_courses ?? 0} courses · ${catalog?.total_materials ?? 0} materials · ${reviewDue?.total ?? 0} reviews due`
           : courseMeta?.title || ''
         }}
       </p>

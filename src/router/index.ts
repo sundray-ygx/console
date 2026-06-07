@@ -8,49 +8,49 @@ const router = createRouter({
       path: '/',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
-      meta: { title: '首页', breadcrumb: [{ label: '首页', icon: '🏠' }] }
+      meta: { title: 'Dashboard', breadcrumb: [{ label: 'Dashboard', icon: '🏠' }] }
     },
     {
       path: '/today',
       name: 'today',
       component: () => import('../views/TodayView.vue'),
-      meta: { title: '今日概览', breadcrumb: [{ label: '概览' }, { label: '今日', icon: '📋' }] }
+      meta: { title: 'Today', breadcrumb: [{ label: 'Home' }, { label: 'Today', icon: '📋' }] }
     },
     {
       path: '/okr',
       name: 'okr',
       component: () => import('../views/OkrView.vue'),
-      meta: { title: 'OKR 看板', breadcrumb: [{ label: '工作' }, { label: 'OKR', icon: '🎯' }] }
+      meta: { title: 'Projects / Goals', breadcrumb: [{ label: 'Operate' }, { label: 'Projects / Goals', icon: '🎯' }] }
     },
     {
       path: '/pdca',
       name: 'pdca',
       component: () => import('../views/PdcaView.vue'),
-      meta: { title: 'PDCA 看板', breadcrumb: [{ label: '工作' }, { label: 'PDCA', icon: '🔄' }] }
+      meta: { title: 'Reviews', breadcrumb: [{ label: 'Operate' }, { label: 'Reviews', icon: '🔎' }] }
     },
     {
       path: '/knowledge',
       name: 'knowledge',
       component: () => import('../views/KnowledgeView.vue'),
-      meta: { title: 'Notion 知识库', breadcrumb: [{ label: '知识' }, { label: 'Notion 知识库', icon: '📚' }] }
+      meta: { title: 'Resources', breadcrumb: [{ label: 'Knowledge' }, { label: 'Resources', icon: '📚' }] }
     },
     {
       path: '/kb',
       name: 'kb',
       component: () => import('../views/KbView.vue'),
-      meta: { title: 'Hermes 知识库', breadcrumb: [{ label: '知识' }, { label: 'Hermes 知识库', icon: '📖' }] }
+      meta: { title: 'Wiki', breadcrumb: [{ label: 'Knowledge' }, { label: 'Wiki', icon: '📖' }] }
     },
     {
       path: '/learn',
       name: 'learn',
       component: () => import('../views/LearnView.vue'),
-      meta: { title: '学习中心', breadcrumb: [{ label: '知识' }, { label: '学习中心', icon: '🎓' }] }
+      meta: { title: 'Learning Center', breadcrumb: [{ label: 'Learn' }, { label: 'Learning Center', icon: '🎓' }] }
     },
     {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
-      meta: { title: '设置', breadcrumb: [{ label: '设置', icon: '⚙' }] }
+      meta: { title: 'Settings', breadcrumb: [{ label: 'System' }, { label: 'Settings', icon: '⚙' }] }
     }
   ]
 })

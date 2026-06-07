@@ -80,8 +80,8 @@ onUnmounted(() => { if (refreshInterval) clearInterval(refreshInterval) })
       <!-- Header -->
       <div class="okr-header">
         <div>
-          <h1 class="page-title">OKR 看板</h1>
-          <p class="page-subtitle">2026 · 进行中的目标与关键结果</p>
+          <h1 class="page-title">Projects / Goals</h1>
+          <p class="page-subtitle">以 Projects 视角承接 OKR：目标、关键结果与关联项目</p>
         </div>
         <div class="overall">
           <span class="overall-pct" :style="{ color: progressColor(totalProgress) }">{{ totalProgress }}%</span>

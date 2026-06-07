@@ -68,8 +68,8 @@ function formatDate(dateStr: string | null): string {
 
 <template>
   <div class="knowledge">
-    <h1 class="page-title">Notion 知识库</h1>
-    <p class="page-subtitle">个人知识管理体系 · 收集 · 整理 · 输出</p>
+    <h1 class="page-title">Resources</h1>
+    <p class="page-subtitle">PARA Resources · Notion 中的主题、资料与参考知识</p>
 
     <div v-if="loading && !overview" class="loading-state">
       <span class="loading-spinner">⟳</span>
