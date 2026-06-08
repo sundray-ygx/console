@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Lesson, Chapter, LessonProgress, CodeExample, Exercise } from '../composables/useCourses'
 import MaterialCard from './MaterialCard.vue'
 
