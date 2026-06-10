@@ -88,10 +88,30 @@ async function triggerIndex() {
 async function loadAllBooks() {
   loadingBooks.value = true
   try {
-    allBooks.value = await getRecentBooks(50)
+    allBooks.value = await getRecentBooks(500)
   } finally {
     loadingBooks.value = false
   }
+}
+
+const sortedBookGroups = computed(() => {
+  // Group books by first letter or category
+  const groups: Record<string, Book[]> = {}
+  for (const book of allBooks.value) {
+    const firstChar = (book.title || '?')[0]?.toUpperCase() || '?'
+    if (!groups[firstChar]) groups[firstChar] = []
+    groups[firstChar].push(book)
+  }
+  // Sort groups by key
+  const sorted = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+  return sorted.map(([key, books]) => ({ key, books }))
+})
+
+const booksShowAll = ref(true)
+const expandedBookGroup = ref<string | null>(null)
+
+function toggleBookGroup(key: string) {
+  expandedBookGroup.value = expandedBookGroup.value === key ? null : key
 }
 
 async function handleSearch() {
@@ -137,6 +157,20 @@ async function loadNotionData() {
 
 function toggleNotionArea(areaId: string) {
   expandedNotionArea.value = expandedNotionArea.value === areaId ? null : areaId
+}
+
+function selectCourseInTab(courseId: string) {
+  // Switch to courses tab and expand this course
+  activeTab.value = 'courses'
+  // Find which area this course belongs to and filter to it
+  for (const g of courseGroups.value) {
+    if (g.courses.some(c => c.id === courseId)) {
+      selectedArea.value = g.area_id
+      break
+    }
+  }
+  // Auto-expand the course
+  toggleCourse(courseId)
 }
 
 onMounted(async () => {
@@ -216,7 +250,7 @@ onMounted(async () => {
             <div v-if="areaCourseMap[area.id]" class="area-courses-mini">
               <h5 class="detail-section-title">📚 课程 ({{ areaCourseMap[area.id] }})</h5>
               <div v-for="g in courseGroups.filter(g => g.area_id === area.id)" :key="g.area_id" class="area-course-list">
-                <div v-for="c in g.courses" :key="c.id" class="mini-course-item" @click.stop="router.push(`/learn?course=${encodeURIComponent(c.id)}`)">
+                <div v-for="c in g.courses" :key="c.id" class="mini-course-item" @click.stop="selectCourseInTab(c.id)">
                   <span class="course-emoji">{{ c.emoji }}</span>
                   <span class="course-title">{{ c.title }}</span>
                   <span class="course-meta">{{ c.book_count }} 书</span>
@@ -239,13 +273,19 @@ onMounted(async () => {
                     v-for="na in notionAreas.filter(n => n.area_id === area.id)"
                     :key="na.area_id"
                   >
-                    <div v-if="na.total > 0">
-                      <div v-for="item in na.items" :key="item.id" class="notion-item">
-                        <span class="notion-source-badge">{{ item.source }}</span>
+                    <div v-if="na.total > 0" class="notion-source-group">
+                      <span class="notion-source-header">
+                        {{ na.source ? Object.keys(na.source).filter(k => na[k] > 0).join(' · ') : '知识' }}
+                      </span>
+                      <div v-for="item in na.items.slice(0, 5)" :key="item.id" class="notion-item" @click.stop="window.open(item.url || item.notionUrl || '', '_blank')">
+                        <span class="notion-source-badge">{{ item.source || '知识' }}</span>
                         <span class="notion-item-title">{{ item.title || '(无标题)' }}</span>
                         <div v-if="item.tags?.length" class="notion-item-tags">
-                          <span v-for="t in item.tags" :key="t" class="tag-pill">{{ t }}</span>
+                          <span v-for="t in item.tags.slice(0, 3)" :key="t" class="tag-pill">{{ t }}</span>
                         </div>
+                      </div>
+                      <div v-if="na.total > 5" class="notion-more">
+                        还有 {{ na.total - 5 }} 条... <a :href="`/knowledge`" target="_blank" @click.stop>查看全部 →</a>
                       </div>
                     </div>
                     <div v-else class="notion-empty">暂无关联知识</div>
@@ -381,7 +421,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 全部书籍 -->
+      <!-- 全部书籍（按首字母分组） -->
       <div class="books-section">
         <h3 class="section-title">📖 全部书籍 ({{ allBooks.length }})</h3>
         <div v-if="loadingBooks" class="loading-state mini">
@@ -391,12 +431,21 @@ onMounted(async () => {
           <span class="empty-icon">📚</span>
           <p>暂无书籍。点击"扫描 NAS 书籍"开始索引</p>
         </div>
-        <div v-else class="books-grid">
-          <div v-for="book in allBooks" :key="book.id" class="book-card" @click="openBook(book)">
-            <span class="book-icon">📕</span>
-            <div class="book-info">
-              <h4 class="book-title">{{ book.title }}</h4>
-              <span class="book-format">{{ book.file_type?.toUpperCase() }}</span>
+        <div v-else class="books-with-letters">
+          <div v-for="group in sortedBookGroups" :key="group.key" class="book-letter-group">
+            <div class="letter-header" @click="toggleBookGroup(group.key)">
+              <span class="letter-key">{{ group.key }}</span>
+              <span class="letter-count">{{ group.books.length }} 本</span>
+              <span class="expand-icon" :class="{ open: expandedBookGroup === group.key }">▶</span>
+            </div>
+            <div v-if="expandedBookGroup === group.key" class="letter-books">
+              <div v-for="book in group.books" :key="book.id" class="book-card" @click="openBook(book)">
+                <span class="book-icon">📕</span>
+                <div class="book-info">
+                  <h4 class="book-title">{{ book.title }}</h4>
+                  <span class="book-format">{{ book.file_type?.toUpperCase() }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -536,6 +585,21 @@ onMounted(async () => {
 .notion-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .tag-pill { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--bg-surface); color: var(--text-quaternary); border: 1px solid var(--border-subtle); }
 .notion-empty { font-size: 12px; color: var(--text-quaternary); padding: 8px 0; }
+.notion-source-group { margin-bottom: 8px; }
+.notion-source-header { font-size: 11px; color: var(--text-quaternary); padding: 4px 0; display: block; }
+.notion-more { font-size: 11px; color: var(--text-quaternary); padding: 6px 10px; text-align: center; }
+
+/* Book grouping by letter */
+.books-with-letters { display: flex; flex-direction: column; gap: 4px; }
+.book-letter-group { border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; }
+.letter-header {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: var(--bg-surface); cursor: pointer; transition: background 0.12s;
+}
+.letter-header:hover { background: var(--bg-panel); }
+.letter-key { font-size: 16px; font-weight: 600; color: var(--accent); font-family: var(--font-mono); min-width: 24px; }
+.letter-count { font-size: 11px; color: var(--text-quaternary); }
+.letter-books { padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 4px; }
 
 /* ── Books Tab ── */
 .search-section {

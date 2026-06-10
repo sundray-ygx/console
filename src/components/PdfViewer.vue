@@ -2,8 +2,10 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Set worker source from CDN
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+// Use Vite's native worker URL import instead of CDN
+// This ensures the worker and library versions match
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url'
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 const props = defineProps<{
   src: string

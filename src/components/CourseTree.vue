@@ -20,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const expandedCourses = ref<Set<string>>(new Set())
+const expandedChapters = ref<Set<string>>(new Set())
 const search = ref('')
 
 function toggleCourse(id: string) {
@@ -30,9 +31,23 @@ function toggleCourse(id: string) {
   }
 }
 
+function toggleChapter(id: string) {
+  if (expandedChapters.value.has(id)) {
+    expandedChapters.value.delete(id)
+  } else {
+    expandedChapters.value.add(id)
+  }
+}
+
 function handleCourseClick(id: string) {
-  emit('select-course', id)
-  expandedCourses.value.add(id)
+  if (expandedCourses.value.has(id)) {
+    // If already expanded, collapse it
+    expandedCourses.value.delete(id)
+  } else {
+    // Expand and select
+    emit('select-course', id)
+    expandedCourses.value.add(id)
+  }
 }
 
 const filteredCourses = computed(() => {
@@ -119,7 +134,7 @@ const STATUS_ICON: Record<string, string> = {
             />
           </div>
 
-          <!-- 章节列表（仅当前选中课程的章节展示） -->
+          <!-- 章节列表（点击课程行展开/收缩） -->
           <div
             v-if="expandedCourses.has(course.id) && selectedCourseId === course.id && courseMeta"
             class="chapter-list"
@@ -129,12 +144,18 @@ const STATUS_ICON: Record<string, string> = {
               :key="ch.id"
               class="chapter-node"
             >
-              <div class="chapter-title">
+              <div
+                class="chapter-title"
+                @click="toggleChapter(ch.id)"
+                :class="{ expanded: expandedChapters.has(ch.id) }"
+              >
+                <span class="expand-icon" :class="{ expanded: expandedChapters.has(ch.id) }">▸</span>
                 <span class="chapter-tag">{{ ch.id.replace(/^0+/, '') || '0' }}</span>
-                {{ ch.title }}
+                <span>{{ ch.title }}</span>
+                <span class="chapter-count">{{ ch.lesson_count || (chapters.find(c => c.chapter_id === ch.id)?.lessons ?? []).length }} 节</span>
               </div>
               <div
-                v-for="lesson in (chapters.find(c => c.chapter_id === ch.id)?.lessons ?? [])"
+                v-for="lesson in (expandedChapters.has(ch.id) ? (chapters.find(c => c.chapter_id === ch.id)?.lessons ?? []) : [])"
                 :key="lesson.lesson_id"
                 class="lesson-row"
                 :class="{ active: selectedLessonId === lesson.lesson_id }"
