@@ -1,5 +1,5 @@
 {
-  "sessionStart": "2026-06-06T02:20:06.976Z",
+  "sessionStart": "2026-06-10T15:07:43.213Z",
   "projectDir": "/root/.hermes/projects/console",
   "language": "typescript",
   "checker": "typescript-checker",
@@ -9,6 +9,7 @@
   "projectName": "console",
   "framework": null,
   "dependencies": [
+    "pdfjs-dist",
     "vue",
     "vue-router",
     "@vitejs/plugin-vue",

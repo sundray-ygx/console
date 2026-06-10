@@ -96,7 +96,27 @@
       "Bash(unalias models *)",
       "Bash(/usr/local/bin/sm *)",
       "Bash(bash *)",
-      "Bash(export CLAUDE_PLUGIN_ROOT=\"/volume1/homes/ygx/share/plugins/claude-mem/plugin\")"
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"/volume1/homes/ygx/share/plugins/claude-mem/plugin\")",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(chmod 700 ~/.ssh)",
+      "Bash(chmod 600 ~/.ssh/id_ed25519)",
+      "Bash(chmod 644 ~/.ssh/id_ed25519.pub)",
+      "Bash(ssh -o StrictHostKeyChecking=accept-new -T git@github.com)",
+      "Bash(python3 -c 'import json; d=json.load\\(open\\(\"/tmp/console-health.json\"\\)\\); print\\(\"api_has_cpu=\", bool\\(d.get\\(\"cpu\"\\)\\), \"api_has_memory=\", bool\\(d.get\\(\"memory\"\\)\\)\\)')",
+      "Bash(python3 *)",
+      "Skill(claude-api)",
+      "Bash(docker network *)",
+      "Bash(kill 22396)",
+      "Bash(PROXY_HOST=0.0.0.0 nohup node proxy.mjs)",
+      "Bash(npm test *)",
+      "Read(//root/.hermes/projects/**)",
+      "Read(//root/.hermes/**)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(docker start *)",
+      "Bash(npx vite *)",
+      "Bash(docker-compose up *)"
     ]
   }
 }
