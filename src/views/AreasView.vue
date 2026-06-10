@@ -89,8 +89,10 @@ async function triggerIndex() {
 async function loadAllBooks() {
   loadingBooks.value = true
   try {
-    allBooks.value = await getRecentBooks(500)
+    // Load topic-grouped books (contains all books in groups)
     bookTopicGroups.value = await getBooksByTopic(500)
+    // Extract flat book list from groups for search fallback
+    allBooks.value = bookTopicGroups.value.flatMap(g => g.books)
   } finally {
     loadingBooks.value = false
   }
@@ -118,24 +120,11 @@ function closeReader() {
 }
 
 const sortedBookGroups = computed(() => {
-  // Use AI-classified topic groups if available, fallback to first-character grouping
-  if (bookTopicGroups.value.length > 0) {
-    return bookTopicGroups.value.map(g => ({
-      key: g.topic,
-      books: g.books,
-    }))
-  }
-
-  // Fallback: group by first letter
-  const groups: Record<string, Book[]> = {}
-  for (const book of allBooks.value) {
-    const firstChar = (book.title || '?')[0]?.toUpperCase() || '?'
-    if (!groups[firstChar]) groups[firstChar] = []
-    groups[firstChar].push(book)
-  }
-  return Object.entries(groups)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, books]) => ({ key, books }))
+  // Group by AI-classified knowledge topics
+  return bookTopicGroups.value.map(g => ({
+    key: g.topic,
+    books: g.books,
+  }))
 })
 
 const expandedBookGroup = ref<string | null>(null)
