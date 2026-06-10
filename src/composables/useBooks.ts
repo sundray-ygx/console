@@ -14,6 +14,11 @@ export interface Book {
   indexed_at: string
 }
 
+export interface BookGroup {
+  topic: string
+  books: Book[]
+}
+
 /* ── State ── */
 
 const loading = ref(false)
@@ -88,6 +93,22 @@ export function useBooks() {
     return `${API_BASE}/api/books/${id}/view`
   }
 
+  async function getBooksByTopic(limit = 500): Promise<BookGroup[]> {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await fetch(`${API_BASE}/api/books/by-topic?limit=${limit}`)
+      if (!res.ok) throw new Error('Failed to get books by topic')
+      const data = await res.json()
+      return data.groups || []
+    } catch (e: any) {
+      error.value = e.message
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     loading,
     error,
@@ -96,5 +117,6 @@ export function useBooks() {
     getRecentBooks,
     getBookInfo,
     getBookViewUrl,
+    getBooksByTopic,
   }
 }

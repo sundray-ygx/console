@@ -33,6 +33,7 @@ const loadingCourseBooks = ref(false)
 
 /* ── Books Tab State ── */
 const allBooks = ref<Book[]>([])
+const bookTopicGroups = ref<{topic: string; books: Book[]}[]>([])
 const searchQuery = ref('')
 const searchResults = ref<Book[]>([])
 const selectedBook = ref<Book | null>(null)
@@ -89,6 +90,7 @@ async function loadAllBooks() {
   loadingBooks.value = true
   try {
     allBooks.value = await getRecentBooks(500)
+    bookTopicGroups.value = await getBooksByTopic(500)
   } finally {
     loadingBooks.value = false
   }
@@ -116,6 +118,15 @@ function closeReader() {
 }
 
 const sortedBookGroups = computed(() => {
+  // Use AI-classified topic groups if available, fallback to first-character grouping
+  if (bookTopicGroups.value.length > 0) {
+    return bookTopicGroups.value.map(g => ({
+      key: g.topic,
+      books: g.books,
+    }))
+  }
+
+  // Fallback: group by first letter
   const groups: Record<string, Book[]> = {}
   for (const book of allBooks.value) {
     const firstChar = (book.title || '?')[0]?.toUpperCase() || '?'
