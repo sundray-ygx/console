@@ -11,6 +11,12 @@ const { areas, loading, error, fetchAreas } = useAreas()
 const { fetchGroupedCourses, fetchCourseBooks, loading: courseLoading } = useAreaCourses()
 const { indexBooks, searchBooks, getRecentBooks } = useBooks()
 
+/* ── Notion Knowledge State ── */
+const notionAreas = ref<any[]>([])
+const notionLoading = ref(false)
+const areaKnowledge = ref<Record<string, any>>({})
+const expandedNotionArea = ref<string | null>(null)
+
 /* ── Tab State ── */
 const activeTab = ref<'overview' | 'courses' | 'books'>('overview')
 
@@ -115,10 +121,30 @@ function handleChildClick(child: { id: string; type: string }) {
   }
 }
 
+async function loadNotionData() {
+  notionLoading.value = true
+  try {
+    const res = await fetch('/api/knowledge/library/areas')
+    if (res.ok) {
+      notionAreas.value = (await res.json()).areas || []
+    }
+  } catch {
+    // Notion data is optional
+  } finally {
+    notionLoading.value = false
+  }
+}
+
+function toggleNotionArea(areaId: string) {
+  expandedNotionArea.value = expandedNotionArea.value === areaId ? null : areaId
+}
+
 onMounted(async () => {
   fetchAreas()
   // Load course groups
   courseGroups.value = await fetchGroupedCourses()
+  // Load Notion knowledge data
+  await loadNotionData()
   // Load books
   await loadAllBooks()
 })
@@ -184,18 +210,52 @@ onMounted(async () => {
             <span class="expand-icon" :class="{ open: expandedArea === area.id }">▶</span>
           </div>
 
-          <!-- 展开：该领域的课程 -->
+          <!-- 展开：该领域的课程 + Notion 知识库 -->
           <div v-if="expandedArea === area.id" class="area-detail">
+            <!-- Courses section -->
             <div v-if="areaCourseMap[area.id]" class="area-courses-mini">
+              <h5 class="detail-section-title">📚 课程 ({{ areaCourseMap[area.id] }})</h5>
               <div v-for="g in courseGroups.filter(g => g.area_id === area.id)" :key="g.area_id" class="area-course-list">
                 <div v-for="c in g.courses" :key="c.id" class="mini-course-item" @click.stop="router.push(`/learn?course=${encodeURIComponent(c.id)}`)">
                   <span class="course-emoji">{{ c.emoji }}</span>
                   <span class="course-title">{{ c.title }}</span>
-                  <span class="course-meta">{{ c.book_count }} 书 • {{ c.material_count }} 材料</span>
+                  <span class="course-meta">{{ c.book_count }} 书</span>
                 </div>
               </div>
             </div>
-            <div v-else>
+
+            <!-- Notion knowledge section -->
+            <div v-if="notionAreas.length > 0" class="area-notion-section" style="margin-top:10px">
+              <h5 class="detail-section-title">
+                📖 Notion 知识库
+                <span class="notion-toggle-btn" @click.stop="toggleNotionArea(area.id)">
+                  {{ expandedNotionArea === area.id ? '收起' : '查看' }}
+                </span>
+              </h5>
+              <div v-if="expandedNotionArea === area.id">
+                <div v-if="notionLoading" class="loading-mini">加载中...</div>
+                <div v-else class="notion-items-list">
+                  <div
+                    v-for="na in notionAreas.filter(n => n.area_id === area.id)"
+                    :key="na.area_id"
+                  >
+                    <div v-if="na.total > 0">
+                      <div v-for="item in na.items" :key="item.id" class="notion-item">
+                        <span class="notion-source-badge">{{ item.source }}</span>
+                        <span class="notion-item-title">{{ item.title || '(无标题)' }}</span>
+                        <div v-if="item.tags?.length" class="notion-item-tags">
+                          <span v-for="t in item.tags" :key="t" class="tag-pill">{{ t }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="notion-empty">暂无关联知识</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fallback: legacy area children -->
+            <div v-if="!areaCourseMap[area.id] && (!notionAreas.find(n => n.area_id === area.id)?.total)" class="area-legacy-children">
               <div v-if="area.children.length > 0" class="area-children">
                 <div v-for="child in area.children" :key="child.id" class="child-item" @click.stop="handleChildClick(child)">
                   <span class="child-type">{{ child.type }}</span>
@@ -408,6 +468,7 @@ onMounted(async () => {
 .child-name { flex: 1; font-size: 13px; color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .child-count { font-size: 11px; font-family: var(--font-mono); color: var(--text-quaternary); }
 .area-empty { padding: 20px; text-align: center; font-size: 12px; color: var(--text-quaternary); }
+.area-legacy-children { margin-top: 10px; }
 
 /* Mini course list in overview */
 .area-course-list { display: flex; flex-direction: column; gap: 4px; }
@@ -464,6 +525,17 @@ onMounted(async () => {
 .book-row-title { flex: 1; font-size: 13px; color: var(--text-secondary); }
 .book-row-format { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); color: var(--text-quaternary); }
 .empty-detail { padding: 20px; text-align: center; color: var(--text-quaternary); font-size: 12px; }
+
+/* Notion items */
+.detail-section-title { font-size: 12px; font-weight: 500; color: var(--text-tertiary); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.notion-toggle-btn { font-size: 11px; color: var(--accent); cursor: pointer; }
+.notion-items-list { display: flex; flex-direction: column; gap: 6px; }
+.notion-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px; background: var(--bg-panel); border-radius: 6px; border: 1px solid var(--border-subtle); }
+.notion-source-badge { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); align-self: flex-start; }
+.notion-item-title { font-size: 13px; color: var(--text-secondary); }
+.notion-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.tag-pill { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--bg-surface); color: var(--text-quaternary); border: 1px solid var(--border-subtle); }
+.notion-empty { font-size: 12px; color: var(--text-quaternary); padding: 8px 0; }
 
 /* ── Books Tab ── */
 .search-section {
