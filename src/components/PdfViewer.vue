@@ -2,10 +2,12 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Use Vite's native worker URL import instead of CDN
-// This ensures the worker and library versions match
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+// Use Vite's URL import to properly bundle the worker
+// This avoids the "Cannot read from private field" error from CDN mismatch
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+).toString()
 
 const props = defineProps<{
   src: string

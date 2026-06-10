@@ -41,7 +41,7 @@ function toggleChapter(id: string) {
 
 function handleCourseClick(id: string) {
   if (expandedCourses.value.has(id)) {
-    // If already expanded, collapse it
+    // Already expanded — collapse it
     expandedCourses.value.delete(id)
   } else {
     // Expand and select
@@ -134,7 +134,7 @@ const STATUS_ICON: Record<string, string> = {
             />
           </div>
 
-          <!-- 章节列表（点击课程行展开/收缩） -->
+          <!-- 章节列表（可折叠） -->
           <div
             v-if="expandedCourses.has(course.id) && selectedCourseId === course.id && courseMeta"
             class="chapter-list"
@@ -146,13 +146,13 @@ const STATUS_ICON: Record<string, string> = {
             >
               <div
                 class="chapter-title"
-                @click="toggleChapter(ch.id)"
                 :class="{ expanded: expandedChapters.has(ch.id) }"
+                @click="toggleChapter(ch.id)"
               >
                 <span class="expand-icon" :class="{ expanded: expandedChapters.has(ch.id) }">▸</span>
                 <span class="chapter-tag">{{ ch.id.replace(/^0+/, '') || '0' }}</span>
                 <span>{{ ch.title }}</span>
-                <span class="chapter-count">{{ ch.lesson_count || (chapters.find(c => c.chapter_id === ch.id)?.lessons ?? []).length }} 节</span>
+                <span class="chapter-count">{{ ch.lesson_count || (chapters.find(c => c.chapter_id === ch.id)?.lessons ?? []).length }}节</span>
               </div>
               <div
                 v-for="lesson in (expandedChapters.has(ch.id) ? (chapters.find(c => c.chapter_id === ch.id)?.lessons ?? []) : [])"
