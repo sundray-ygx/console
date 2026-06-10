@@ -2,12 +2,10 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Use Vite's URL import to properly bundle the worker
-// This avoids the "Cannot read from private field" error from CDN mismatch
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url
-).toString()
+// Import worker as a URL asset using Vite's ?url suffix
+// This ensures the worker is bundled separately and paths match the library version
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url'
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
 const props = defineProps<{
   src: string
@@ -24,12 +22,16 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const loading = ref(true)
+const loadingMessage = ref('加载 PDF 中...')
 const error = ref<string | null>(null)
 const currentPage = ref(props.initialPage || 1)
 const totalPages = ref(0)
 const pdfDoc = ref<pdfjsLib.PDFDocumentProxy | null>(null)
 const scale = ref(1.5)
 const zoomLevels = [0.75, 1, 1.25, 1.5, 2, 2.5, 3]
+
+// Blob cache for PDF data keyed by src URL
+const pdfBlobCache = new Map<string, ArrayBuffer>()
 
 /* ── Computed ── */
 const progressPercent = computed(() => {
@@ -43,11 +45,52 @@ const canZoomOut = computed(() => scale.value > zoomLevels[0])
 /* ── Methods ── */
 async function loadPdf() {
   loading.value = true
+  loadingMessage.value = '获取文件...'
   error.value = null
   try {
-    const loadingTask = pdfjsLib.getDocument(props.src)
+    // Try fetching from blob cache or download as ArrayBuffer
+    let data: ArrayBuffer | null = pdfBlobCache.get(props.src) || null
+    if (!data) {
+      const res = await fetch(props.src)
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const ct = res.headers.get('content-type') || ''
+      // Get total size for progress
+      const total = parseInt(res.headers.get('content-length') || '0')
+      if (!res.body) {
+        data = await res.arrayBuffer()
+      } else {
+        // Stream with progress
+        const reader = res.body.getReader()
+        const chunks: Uint8Array[] = []
+        let received = 0
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          chunks.push(value)
+          received += value.length
+          if (total > 0) {
+            const pct = Math.round((received / total) * 100)
+            loadingMessage.value = `下载中... ${pct}%`
+          }
+        }
+        // Concatenate
+        const allBytes = new Uint8Array(received)
+        let offset = 0
+        for (const chunk of chunks) {
+          allBytes.set(chunk, offset)
+          offset += chunk.length
+        }
+        data = allBytes.buffer as ArrayBuffer
+      }
+      // Cache for this session
+      pdfBlobCache.set(props.src, data)
+    }
+
+    loadingMessage.value = '解析文档...'
+    const loadingTask = pdfjsLib.getDocument({ data })
     pdfDoc.value = await loadingTask.promise
     totalPages.value = pdfDoc.value.numPages
+    loadingMessage.value = `第 ${currentPage.value}/${totalPages.value} 页`
     await renderPage(currentPage.value)
   } catch (e: any) {
     error.value = e.message
@@ -173,7 +216,7 @@ watch(() => props.src, () => {
     <!-- Loading State -->
     <div v-if="loading" class="pdf-loading">
       <div class="spinner"></div>
-      <p>加载 PDF 中...</p>
+      <p>{{ loadingMessage }}</p>
     </div>
 
     <!-- Error State -->

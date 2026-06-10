@@ -8,6 +8,7 @@ interface RecentItem {
   category: string | null
   tags: string[]
   updated: string | null
+  url?: string
 }
 
 interface SubStats {
@@ -110,6 +111,8 @@ function formatDate(dateStr: string | null): string {
               v-for="item in overview.recent[lib.key]"
               :key="item.id"
               class="recent-item"
+              @click="item.url && window.open(item.url, '_blank')"
+              :style="{ cursor: item.url ? 'pointer' : 'default' }"
             >
               <div class="recent-item-title">{{ item.title }}</div>
               <div class="recent-item-footer">
