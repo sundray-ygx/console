@@ -421,7 +421,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 全部书籍（按首字母分组） -->
+      <!-- 全部书籍（按知识主题分类） -->
       <div class="books-section">
         <h3 class="section-title">📖 全部书籍 ({{ allBooks.length }})</h3>
         <div v-if="loadingBooks" class="loading-state mini">
@@ -431,14 +431,14 @@ onMounted(async () => {
           <span class="empty-icon">📚</span>
           <p>暂无书籍。点击"扫描 NAS 书籍"开始索引</p>
         </div>
-        <div v-else class="books-with-letters">
-          <div v-for="group in sortedBookGroups" :key="group.key" class="book-letter-group">
-            <div class="letter-header" @click="toggleBookGroup(group.key)">
-              <span class="letter-key">{{ group.key }}</span>
-              <span class="letter-count">{{ group.books.length }} 本</span>
+        <div v-else class="books-with-topics">
+          <div v-for="group in sortedBookGroups" :key="group.key" class="book-topic-group">
+            <div class="topic-header" @click="toggleBookGroup(group.key)">
+              <span class="topic-key">{{ group.key }}</span>
+              <span class="topic-count">{{ group.books.length }} 本</span>
               <span class="expand-icon" :class="{ open: expandedBookGroup === group.key }">▶</span>
             </div>
-            <div v-if="expandedBookGroup === group.key" class="letter-books">
+            <div v-if="expandedBookGroup === group.key" class="topic-books">
               <div v-for="book in group.books" :key="book.id" class="book-card" @click="openBook(book)">
                 <span class="book-icon">📕</span>
                 <div class="book-info">
@@ -625,17 +625,17 @@ onMounted(async () => {
 .notion-item { cursor: pointer; }
 .notion-item:hover { border-color: var(--accent); }
 
-/* Book grouping by letter */
-.books-with-letters { display: flex; flex-direction: column; gap: 4px; }
-.book-letter-group { border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; }
-.letter-header {
+/* Book grouping by knowledge topic */
+.books-with-topics { display: flex; flex-direction: column; gap: 4px; }
+.book-topic-group { border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; }
+.topic-header {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   background: var(--bg-surface); cursor: pointer; transition: background 0.12s;
 }
-.letter-header:hover { background: var(--bg-panel); }
-.letter-key { font-size: 16px; font-weight: 600; color: var(--accent); font-family: var(--font-mono); min-width: 24px; }
-.letter-count { font-size: 11px; color: var(--text-quaternary); }
-.letter-books { padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 4px; }
+.topic-header:hover { background: var(--bg-panel); }
+.topic-key { font-size: 14px; font-weight: 600; color: var(--accent); min-width: 60px; }
+.topic-count { font-size: 11px; color: var(--text-quaternary); }
+.topic-books { padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 4px; }
 
 /* ── Reader Modal ── */
 .reader-modal { position: fixed; inset: 0; z-index: 1000; }

@@ -118,7 +118,8 @@
       "Bash(npx vite *)",
       "Bash(docker-compose up *)",
       "Bash(docker-compose ps *)",
-      "Bash(docker exec *)"
+      "Bash(docker exec *)",
+      "Bash(sqlite3 *)"
     ]
   }
 }
